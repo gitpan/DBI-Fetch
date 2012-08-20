@@ -1,0 +1,6 @@
+Revision history for Perl extension DBI::Fetch.
+
+1.00  Thu Aug  9 04:05:28 2012
+	- original version; created by h2xs 1.23 with options
+		-X -b 5.8.4 -v1.00 -n DBI::Fetch
+
