@@ -9,7 +9,7 @@ package DBI::Fetch;
 
 BEGIN {
     $DBI::Fetch::AUTHORITY = 'cpan:CPANIC';
-    $DBI::Fetch::VERSION   = '0.10';
+    $DBI::Fetch::VERSION   = '0.11';
     $DBI::Fetch::VERSION   = eval $DBI::Fetch::VERSION;
 }
 
@@ -363,7 +363,12 @@ sub process {
         $sth->finish;
 
         if ($config->{return_result_sets_as_ref}) {
-            pop_config if $config->{auto_pop_config};
+            if ($config->{auto_pop_config}) {
+                @CONFIG > 1 
+                    ? pop_config() 
+                    : delete $config->{auto_pop_config};
+            }
+
             return \@results; 
         }
     }
@@ -371,11 +376,15 @@ sub process {
         @results = $callbacks->yield($sth->rows);
         
         $sth->finish;
+
+        if ($config->{auto_pop_config}) {
+            @CONFIG > 1 
+                ? pop_config() 
+                : delete $config->{auto_pop_config};
+        }
     }
 
-    pop_config if $config->{auto_pop_config};
-
-    wantarray
+    return wantarray
         ? @results 
         : @results != 1 ? @results : $results[0];
 }
@@ -548,6 +557,16 @@ callbacks to each row of your the result as it is collected from the
 database. It does a lot yet can be very expressively written. It's also 
 flexible and subtle. The function accepts the following parameters:
 
+The function attempts to be smart about how it packages the 
+return value from any SQL statement that would yield a  result set. Under
+such circumstances, calls made in list context receive a list of results,
+whereas calls made in scalar context may or may not get the number of rows 
+in the result set depending on the size of that result set. If the result
+set contains more or less than one row, then number of rows is returned;
+however, if the result set contains exactly one row then the row itself
+is returned. To correctly determine the number of rows in scalar context,
+the developer should use Perl's built-in C<scalar> function.
+
 =over 2
 
 =item I<DB-HANDLE>
@@ -662,13 +681,36 @@ by setting or resetting the following parameters:
 
 =over 2
 
+=item B<auto_pop_config =E<gt>> I<BOOLEAN>
+
+When true, this setting causes the C<process> function to discard the active
+frame from the configuration stack and restore the previous configuration.
+
+If the active frame is the B<only> frame in the configuration stack then
+no action is taken and the flag is cleared.
+
+This setting will probably only be helpful when combined with C<push_config>
+as it is in the following example:
+
+    DBI::Fetch->push_config(
+        return_result_sets_as_ref => 1,
+        auto_pop_config           => 1
+    );
+
+    my $result_set_ref = process($dbh, 'SELECT * FROM tracks');
+
+The setting saves you having to call C<DBI::Fetch->pop_config()> when 
+changing the behaviour of a single C<process> call.
+
 =item B<dbh =E<gt>> I<DATABASE-HANDLE>
 
-Sets which database handle to be used by C<process> when one is absent from the parameter list.
+Sets which database handle the C<process> function will fall back to
+when one is absent from the parameter list.
 
-The default behaviour of C<process> is to "remember" the last database handle used. Setting the
-C<dbh> in this way automatically cancels that behaviour, and clearing the C<dbh> reverts back
-to the default behaviour.
+The default behaviour of C<process> is to "remember" the last 
+database handle used. Setting the C<dbh> in this way automatically 
+cancels that behaviour; clearing it reverts back to the default 
+behaviour.
 
 =item B<fetch_row_using =E<gt>> I<CODE-REFERENCE>
 
@@ -678,45 +720,50 @@ The default behaviour is for C<process> is to execute this code:
 
     sub { $_[0]->fetchrow_hashref('NAME_lc') }
 
-If you don't like it, change it; but make sure your callbacks process the correct type of
-structure.
+If you don't like it, change it; but make sure your callbacks process 
+the correct type of structure.
  
 =item B<remember_last_used_dbh =E<gt>> I<BOOLEAN>
 
-Use this to control whether or not C<process> remembers the last used database handle.
+When true, the C<remember_last_used_dbh> setting causes the C<process>
+function to remember the last database handle it used, and this is the
+default behaviour.
 
-Default behaviour is for C<process> to remember the last used database handle. By and large
-you should not have to use this when setting or clearing the C<dbh> setting as this will
-result in complementary behaviour.
+It's useful in repeated interactions with the same database connection. The
+C<process> function will fall back to the last used database handle one is
+omitted from its parameter list.
+
+When false, the C<process> function will not update the last used database
+handle (whether it is set or otherwise).
 
 =item B<return_result_sets_as_ref =E<gt>> I<BOOLEAN>
 
-By default, C<process> tries to be smart about how it handles the return value for calls that
-would yield a result set. Calls made in list context will always get a list of results. Calls
-made in scalar context, on the other hand, will only get the number of rows if the number of 
-rows is not equal to one; if the result set contains only one row, it's the row that will be
-returned.
-
-This is all very well but returning large result will invariably require a copy of the array
-result being made. Use this setting to inform C<process> that it must return all result sets
-by reference, thereby avoiding a potentially costly copy being made.
+When true, this setting forces the C<process> function to return result sets
+as array references, thereby removing the need for a potentially expensive 
+copy operation on large sets. B<Note> that this behaviour is restricted to
+result sets and the the return values from non-SELECT SQL statements.
 
 =back
 
-The C<config> functions come in three flavours: C<push_config>, C<pop_config> and good old
-vanilla C<config>. Visualize the configuration as a stack of configurations. Whereas C<config>
-allows you to work with the current configuration, C<push_config> will copy the current
-configuration into a new frame that will itself become the current configuration. The C<pop_config>
-function restores the previous configuration. You are prevented from accidentally popping beyond 
-the original configuration. All of the functions take settings as parameters, and all of them 
-return the a reference to the current configuration hash.
+The C<config> functions come in three flavours: C<push_config>, C<pop_config> 
+and plain old vanilla C<config>. Visualize the configuration as a stack of 
+configurations, in which the current or active frame dictates the behaviour
+of the C<process> function. 
 
-When using the C<push_config> funtion, an extra B<autopop =E<gt>> I<BOOLEAN> parameter may
-be set to have C<process> automatically restore the previous configuration upon completion.
+Whereas C<config> allows you to work with the active configuration, 
+C<push_config> will copy the active configuration into a new frame which
+then becomes the active configuration. 
+
+The C<pop_config> function restores the previously active configuration. You 
+are prevented from accidentally discarding the original configuration. 
+
+All three functions in this group take the same parameters (one of more 
+active configuration settings) and yield a reference to the active 
+configuration hash.
 
 =back
 
-q=head1 EXPORTS
+=head1 EXPORTS
 
 =head2 Tag group ":default"
 

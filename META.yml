@@ -1,24 +1,24 @@
----
-abstract: 'Prepare SQL statements, execute them and process the results easily.'
+--- #YAML:1.0
+name:               DBI-Fetch
+version:            0.11
+abstract:           Prepare SQL statements, execute them and process the results easily.
 author:
-  - 'Iain Campbell <cpanic@cpan.org>'
-build_requires:
-  ExtUtils::MakeMaker: 0
+    - Iain Campbell <cpanic@cpan.org>
+license:            unknown
+distribution_type:  module
 configure_requires:
-  ExtUtils::MakeMaker: 0
-dynamic_config: 1
-generated_by: 'ExtUtils::MakeMaker version 6.62, CPAN::Meta::Converter version 2.112621'
-license: unknown
-meta-spec:
-  url: http://module-build.sourceforge.net/META-spec-v1.4.html
-  version: 1.4
-name: DBI-Fetch
-no_index:
-  directory:
-    - t
-    - inc
+    ExtUtils::MakeMaker:  0
+build_requires:
+    ExtUtils::MakeMaker:  0
 requires:
-  DBI: 1.5
-  Params::Callbacks: 1.14
-  Scalar::Util: 1.21
-version: 0.10
+    DBI:                1.5
+    Params::Callbacks:  1.14
+    Scalar::Util:       1.21
+no_index:
+    directory:
+        - t
+        - inc
+generated_by:       ExtUtils::MakeMaker version 6.55_02
+meta-spec:
+    url:      http://module-build.sourceforge.net/META-spec-v1.4.html
+    version:  1.4
