@@ -9,7 +9,7 @@ package DBI::Fetch;
 
 BEGIN {
     $DBI::Fetch::AUTHORITY = 'cpan:CPANIC';
-    $DBI::Fetch::VERSION   = '0.11';
+    $DBI::Fetch::VERSION   = '0.12';
     $DBI::Fetch::VERSION   = eval $DBI::Fetch::VERSION;
 }
 
@@ -271,6 +271,9 @@ sub process {
             else {
                 throw $E_EXP_STH, $class;
             }    
+        }
+        else {
+            undef;
         } 
     };
 
@@ -515,33 +518,21 @@ I had three goals when creating the C<DBI::Fetch> module:
 
 =item 1
 
-Simplify lower-level database interactions and help the developer write
-less code that does more and to keep that code readable.
+Help developers who need to interact with DBI directly do so but with
+less code that does much more.
 
 =item 2
 
-Remove the irritation of having to constantly adjust to the parameter 
-placeholder style offered by this or that DBI driver. I love using MySQL
-but, honestly, I personally prefer using the clearer and more readable 
-":name" placeholder style offered by the Oracle driver.
-
-I wanted to make it possible for any developer who has to use DBI to 
-continue using his or her favoured style, so C<DBI::Fetch> offers them 
-all but normalizes down to standard "?" style.
+Remove the irritation of having to adjust to a different parameter placeholder 
+style at the least convenient time.
 
 =item 3 
 
-Provide a light-weight and accessible way to process result-sets row by row
-and B<at fetch time>, yet still offer the ability to recall, store and 
-iterate over result sets the traditional way.
+Provide a simple and more intuitive method for processing result sets.
 
 =back
 
-In short, I wanted to make it easier to work with DBI without requiring
-access to or knowledge of larger, more complex database abstraction
-layers.
-
-=head1 THE PROCESS FUNCTION
+=head1 PROCESSING RESULTS
 
 =over 4
 
@@ -557,53 +548,40 @@ callbacks to each row of your the result as it is collected from the
 database. It does a lot yet can be very expressively written. It's also 
 flexible and subtle. The function accepts the following parameters:
 
-The function attempts to be smart about how it packages the 
-return value from any SQL statement that would yield a  result set. Under
-such circumstances, calls made in list context receive a list of results,
-whereas calls made in scalar context may or may not get the number of rows 
-in the result set depending on the size of that result set. If the result
-set contains more or less than one row, then number of rows is returned;
-however, if the result set contains exactly one row then the row itself
-is returned. To correctly determine the number of rows in scalar context,
-the developer should use Perl's built-in C<scalar> function.
-
 =over 2
 
 =item I<DB-HANDLE>
 
-The database handle obtained using a call to C<DBI-E<gt>connect(...)>, and 
-sometimes it's optional.
+A database handle obtained using a call to C<DBI-E<gt>connect(...)>.
 
-The default behaviour is for C<process> to remember the last used database 
-handle and to use that remembered value if the parameter is omitted in 
-subsequent calls. Obviously, it will complain if there is no suitable
-value to use.
+The default behaviour is for C<process> to remember the last database 
+handle it used and to use that handle if the parameter is omitted in a
+call.
 
 It is also possible to pre-configure the C<process> function to use a 
-specific database handle and also to have it not remember the last used 
-database handle (I<see CONFIGURATION>).
+specific database handle and prevent it from overwriting that value.
 
 =item I<STATEMENT>
 
-A string containing the SQL statement to be prepared or the statement 
-handle of a statement that was prepared using C<DBI::db-E<gt>prepare(...)>.
+A string containing the SQL statement to be prepared, or the handle of a
+statement that has already been prepared.
 
-B<Be careful> if you choose to pass statement handles instead of statement
-strings. When you pass a pre-prepared statement handle, you B<must> also
-supply any bindable parameters in a manner that is consistent with your DBD 
-driver's native support for placeholders, i.e. your statement is already 
-prepared, there is no flexibility regarding placeholders.
+Passing the statement in as a string gives you more flexibility over which
+placeholder style you can choose to use. It may, however, not be the best
+performing choice because C<process> will have it prepared each time.
 
-By passing the SQL statement in as a string, the C<process> function will
-normalize the query so that it always uses "?" placeholders internally and
-reformats any parameters accordingly. So you retain complete flexibility
-regarding placeholder styles.
+Passing the statement in as a database handle gives you no flexibility over
+placeholder style and, as a consequence, how you must bind parameters. It
+does, however, give you better performance because C<process> won't bother
+having it prepared.
 
 =item I<PARAMETER-LIST>
 
-An optional list of one or more parameters to be bound to the prepared 
-statement. Organised by placeholder style, the following are examples of 
-well-formed parameter lists:
+An optional list of parameters to be bound to a prepared statement. The type of
+list you will use will depend upon the placeholder style you prefer to use.
+
+Organised by placeholder style, the following are all examples of well-formed 
+parameter lists:
 
 =over 2
 
@@ -611,9 +589,9 @@ well-formed parameter lists:
 
 =over 2
 
-=item I<VALUE-1>, I<VALUE-2>, B<[> I<VALUE-3>, B<\%>I<ATTRS> B<]>, ... , I<VALUE-N>
+=item I<VALUE-1>B<,> I<VALUE-2>B<,> B<[> I<VALUE-3>B<,> B<\%>I<ATTRS> B<],> ...B<,> I<VALUE-N>
 
-=item B<[> I<VALUE-1>, I<VALUE-2>, B<[> I<VALUE-3>, B<\%>I<ATTRS> B<]>, ... , I<VALUE-N> B<]>
+=item B<[> I<VALUE-1>B<,> I<VALUE-2>B<,> B<[> I<VALUE-3>B<,> B<\%>I<ATTRS> B<],> ...B<,> I<VALUE-N> B<]>
 
 =back
 
@@ -621,9 +599,9 @@ well-formed parameter lists:
 
 =over 2
 
-=item I<VALUE-1>, I<VALUE-2>, [ I<VALUE-3>, B<\%>I<ATTRS> ], ... , I<VALUE-N>
+=item I<VALUE-1>B<,> I<VALUE-2>B<,> B<[> I<VALUE-3>B<,> B<\%>I<ATTRS> B<],> ...B<,> I<VALUE-N>
 
-=item B<[> I<VALUE-1>, I<VALUE-2>, B<[> I<VALUE-3>, B<\%>I<ATTRS> B<]>, ... , I<VALUE-N> B<]>
+=item B<[> I<VALUE-1>B<,> I<VALUE-2>B<,> B<[> I<VALUE-3>B<,> B<\%>I<ATTRS> B<],> ...B<,> I<VALUE-N> B<]>
 
 =back
 
@@ -631,32 +609,55 @@ well-formed parameter lists:
 
 =over 2
 
-=item I<NAME-1> =E<gt> I<VALUE-1>, ':I<NAME-2>' =E<gt> I<VALUE-2>, I<NAME-3> =E<gt> B<[> I<VALUE-3>, B<\%>I<ATTRS> B<]>, ... , I<NAME-N> =E<gt> I<VALUE-N>
-
-=item B<{> I<NAME-1> =E<gt> I<VALUE-1>, ':I<NAME-2>' =E<gt> I<VALUE-2>, I<NAME-3> =E<gt> B<[> I<VALUE-3>, B<\%>I<ATTRS> B<]>, ... , I<NAME-N> =E<gt> I<VALUE-N> B<}>
-
-=item B<[> I<NAME-1> =E<gt> I<VALUE-1>, ':I<NAME-2>' =E<gt> I<VALUE-2>, I<NAME-3> =E<gt> B<[> I<VALUE-3>, B<\%>I<ATTRS> B<]>, ... , I<NAME-N> =E<gt> I<VALUE-N> B<]>
-
+=item I<NAME-1> B<=E<gt>> I<VALUE-1>B<,> ':I<NAME-2>' B<=E<gt>> I<VALUE-2>B<,> I<NAME-3> B<=E<gt>> B<[> I<VALUE-3>B<,> B<\%>I<ATTRS> B<],> ...B<,> I<NAME-N> B<=E<gt>> I<VALUE-N>
+    
+=item B<{> I<NAME-1> B<=E<gt>> I<VALUE-1>B<,> ':I<NAME-2>' B<=E<gt>> I<VALUE-2>B<,> I<NAME-3> B<=E<gt>> B<[> I<VALUE-3>B<,> B<\%>I<ATTRS> B<],> ...B<,> I<NAME-N> B<=E<gt>>I<VALUE-N> B<}>
+    
+=item B<[> I<NAME-1> B<=E<gt>> I<VALUE-1>B<,> ':I<NAME-2>' B<=E<gt>> I<VALUE-2>B<,> I<NAME-3> B<=E<gt>> B<[> I<VALUE-3>B<,> B<\%>I<ATTRS> B<],> ...B<,> I<NAME-N> B<=E<gt>> I<VALUE-N> B<]>
+    
 =back
 
 =back
 
-You're free to enclose your parameter list inside an appropriate anonymous 
-list container, or not if you prefer. In the case of :name-style binding, you
-may prefix your keys with C<:> but it's not necessary.
+The choice to enclose your parameter list inside a list container is yours to make. 
+Do or do not; both options are acceptable.
+
+When using :name-style placeholders, the choice of whether or not to prefix binding
+parameter names with a leading colon (C<:>) is also yours to make. Again it doesn't 
+matter.
 
 =item I<CALLBACK-LIST>
 
-An optional list containing code references or anonymous subroutines used to
-filter or otherwise process rows as they are collected. After it has been fetched, 
-each row is passed to the first callback for processing. If there are additional
-callbacks, the result of that processing is passed along to the next callback
-until it reaches the end of the queue. The result returned from the final stage
-of the callback queue will be added to the set of results returned by the 
-C<process> function. It's perfectly acceptable for the callback queue to yield
-an empty list or a list of more than one value, as well as a single value.
+The Callback List is an optional list of code references or anonymous subroutines 
+that will be used to process your results. Result sets are processed row-by-row 
+as each row is fetched. 
+
+Each callback receives the result in C<$_[0]> and return a result onto the next
+callback. The terminal result will be returned to the caller. A result may be 
+manipulated during callback processing, or eliminated altogether by returning
+an empty list.
+
+The C<process> function knows how to identify callbacks: they're the code-references 
+at the end of the parameter list. There's no reason to use anything more complicated
+than a comma (C<,>) to separate them from other arguments.
 
 =back
+
+The C<process> function attempts to be smart about how it handles the return
+value from SQL statements that return result sets. 
+
+When called in List Context, C<process> will return a list of rows. When 
+called Scalar Context, on the other hand, things are somewhat trickier but 
+predictable. If the result set contains a single row then that row is returned; 
+any other outcome results in the number of rows being returned. You should reserve 
+Scalar Context calls for situations in which you expect your result set to contain
+a single row, or you are performing another operation for which the number of 
+affected rows needs to be known.
+
+To correctly determine the number of rows, the developer should use Perl's 
+built-in C<scalar> function. For example:
+
+    my $row_count = scalar process($dbh, 'SELECT * FROM tracks');
 
 =back
 
