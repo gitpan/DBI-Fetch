@@ -21,4 +21,4 @@ requires:
   DBI: 1.5
   Params::Callbacks: 1.14
   Scalar::Util: 1.21
-version: 0.12
+version: 1.00

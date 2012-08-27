@@ -9,3 +9,6 @@ Revision history for Perl extension DBI::Fetch.
 0.12  Thu Aug 26 23:25:28 2012
 	- Documentation update
 		-X -b 5.8.4 -v1.00 -n DBI::Fetch
+1.00  Thu Aug 27 16:62:00 2012
+	- Documentation update and release
+		-X -b 5.8.4 -v1.00 -n DBI::Fetch

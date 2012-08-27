@@ -9,7 +9,7 @@ package DBI::Fetch;
 
 BEGIN {
     $DBI::Fetch::AUTHORITY = 'cpan:CPANIC';
-    $DBI::Fetch::VERSION   = '0.12';
+    $DBI::Fetch::VERSION   = '1.00';
     $DBI::Fetch::VERSION   = eval $DBI::Fetch::VERSION;
 }
 
@@ -545,8 +545,7 @@ Provide a simple and more intuitive method for processing result sets.
 The C<process> function will prepare your statement, bind it to any 
 parameters you have provided, execute that statement and apply your 
 callbacks to each row of your the result as it is collected from the
-database. It does a lot yet can be very expressively written. It's also 
-flexible and subtle. The function accepts the following parameters:
+database. The function accepts the following parameters:
 
 =over 2
 
@@ -620,7 +619,7 @@ parameter lists:
 =back
 
 The choice to enclose your parameter list inside a list container is yours to make. 
-Do or do not; both options are acceptable.
+Both options are acceptable.
 
 When using :name-style placeholders, the choice of whether or not to prefix binding
 parameter names with a leading colon (C<:>) is also yours to make. Again it doesn't 
@@ -632,14 +631,11 @@ The Callback List is an optional list of code references or anonymous subroutine
 that will be used to process your results. Result sets are processed row-by-row 
 as each row is fetched. 
 
-Each callback receives the result in C<$_[0]> and return a result onto the next
-callback. The terminal result will be returned to the caller. A result may be 
-manipulated during callback processing, or eliminated altogether by returning
-an empty list.
+Each callback receives the result in C<$_[0]> and returns a result to the next
+callback in the chain. The terminating result will be returned to the caller. 
 
-The C<process> function knows how to identify callbacks: they're the code-references 
-at the end of the parameter list. There's no reason to use anything more complicated
-than a comma (C<,>) to separate them from other arguments.
+A result may be manipulated during callback processing, or eliminated altogether 
+by returning an empty list.
 
 =back
 
